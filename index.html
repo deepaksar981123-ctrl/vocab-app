@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>English Vocabulary</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container header-inner">
+            <h1>English Vocabulary</h1>
+            <nav class="nav">
+                <button class="nav-btn" data-target="home">Home</button>
+                <button class="nav-btn" data-target="search">Search</button>
+                <button class="nav-btn" data-target="search" id="nav-vocab">Vocabulary</button>
+                <button class="nav-btn" data-target="quiz">Quiz</button>
+                <button class="nav-btn" data-target="flashcards">Flashcards</button>
+                <button class="nav-btn" data-target="add-word">Add Word</button>
+                <button class="nav-btn" id="theme-toggle" aria-label="Toggle dark mode">🌙</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <section id="home" class="view active">
+            <h2>Word of the Day</h2>
+            <div id="wotd" class="card">
+                <div class="wotd-word" id="wotd-word">—</div>
+                <div class="wotd-meaning" id="wotd-meaning">—</div>
+                <div class="wotd-example" id="wotd-example">—</div>
+            </div>
+            <button id="home-cta" class="home-cta" aria-label="Open vocabulary">Vocabulary</button>
+        </section>
+
+        <section id="search" class="view">
+            <h2>Search Vocabulary</h2>
+            <input id="search-input" type="text" placeholder="Search word, meaning, or synonym..." />
+            <div id="search-results" class="list"></div>
+        </section>
+
+        <section id="quiz" class="view">
+            <h2>Quiz (Coming Soon)</h2>
+            <p>The quiz feature will let you test meanings via multiple-choice questions.</p>
+            <button id="start-quiz" disabled>Start Quiz</button>
+            <div id="quiz-area"></div>
+        </section>
+
+        <section id="flashcards" class="view">
+            <h2>Flashcards (Coming Soon)</h2>
+            <p>Review words as flashcards and save your progress locally.</p>
+            <div id="flashcard-area"></div>
+        </section>
+
+        <section id="add-word" class="view">
+            <h2>Add New Word</h2>
+            <div class="add-word-form card">
+                <form id="word-form">
+                    <div class="form-group">
+                        <label for="new-word">Word *</label>
+                        <input type="text" id="new-word" required placeholder="Enter English word">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new-pronunciation">Pronunciation (उच्चारण)</label>
+                        <input type="text" id="new-pronunciation" placeholder="e.g., pom-puhs">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new-hindi-meaning">Hindi Meaning</label>
+                        <input type="text" id="new-hindi-meaning" placeholder="हिंदी में अर्थ">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new-english-meaning">English Meaning *</label>
+                        <textarea id="new-english-meaning" required placeholder="Enter English definition"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new-example">Example</label>
+                        <textarea id="new-example" placeholder="Usage example"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new-pos">Part of Speech</label>
+                        <select id="new-pos">
+                            <option value="">Select...</option>
+                            <option value="noun">Noun</option>
+                            <option value="verb">Verb</option>
+                            <option value="adjective">Adjective</option>
+                            <option value="adverb">Adverb</option>
+                            <option value="preposition">Preposition</option>
+                            <option value="conjunction">Conjunction</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new-synonyms">Synonyms (comma separated)</label>
+                        <input type="text" id="new-synonyms" placeholder="similar, alike, same">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new-mnemonic">Mnemonic Story</label>
+                        <textarea id="new-mnemonic" placeholder="A short story or trick to remember this word"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="nav-btn">Add Word</button>
+                </form>
+            </div>
+            
+            <div id="add-word-success" class="success-message" style="display: none;">
+                <p>✅ Word added successfully! You can now search for it.</p>
+            </div>
+        </section>
+    </main>
+
+    <div id="loader" class="loader hidden" aria-hidden="true">
+        <div class="spinner"></div>
+        <div class="loader-text">Loading…</div>
+    </div>
+
+    <div id="toasts" class="toasts" aria-live="polite" aria-atomic="true"></div>
+
+    <footer class="site-footer">
+        <div class="container">
+            <small>Made for learning — English Vocabulary</small>
+        </div>
+    </footer>
+    <div id="detail-modal" class="modal" aria-hidden="true">
+        <div class="modal-backdrop" data-close-modal></div>
+        <div class="modal-content card">
+            <button class="modal-close nav-btn" data-close-modal aria-label="Close">✖</button>
+            <div id="detail-title" class="wotd-word">—</div>
+            <div class="detail-meta">
+                <span id="detail-pos" class="badge"></span>
+                <span id="detail-pron" class="badge"></span>
+            </div>
+            <div id="detail-hi" class="detail-line"></div>
+            <div id="detail-en" class="detail-line"></div>
+            <div id="detail-syn" class="detail-line"></div>
+            <div id="detail-ex" class="detail-block"></div>
+            <div id="detail-mn" class="detail-block"></div>
+            <div id="detail-one" class="detail-block"></div>
+            <div id="detail-uses" class="detail-block"></div>
+        </div>
+    </div>
+
+    <!-- New Beautiful Word Popup -->
+    <div id="word-popup" class="word-popup" aria-hidden="true">
+        <div class="popup-backdrop" data-close-popup></div>
+        <div class="popup-container">
+            <div class="popup-speech-bubble">
+                <div class="popup-word" id="popup-word">—</div>
+            </div>
+            <div class="popup-content">
+                <div class="popup-header">
+                    <span>Words</span>
+                    <span>|</span>
+                    <span>उच्चारण</span>
+                    <span>|</span>
+                    <span>Part of Speech</span>
+                </div>
+                <div class="popup-body">
+                    <div class="popup-pos" id="popup-pos">—</div>
+                    <div class="popup-pronunciation" id="popup-pronunciation">—</div>
+                    <div class="popup-hindi-meaning" id="popup-hindi-meaning">—</div>
+                    <div class="popup-english-meaning" id="popup-english-meaning">—</div>
+                    <div class="popup-synonyms" id="popup-synonyms">—</div>
+                    <div class="popup-example" id="popup-example">—</div>
+                    <div class="popup-mnemonic" id="popup-mnemonic">—</div>
+                </div>
+            </div>
+            <button class="popup-close" data-close-popup aria-label="Close">✖</button>
+            <button class="popup-delete" id="popup-delete" aria-label="Delete Word" style="display: none;">🗑️</button>
+            <button class="popup-edit" id="popup-edit" aria-label="Edit Word" style="display: none;">✎</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+
+
