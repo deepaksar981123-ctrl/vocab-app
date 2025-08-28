@@ -5,7 +5,7 @@
     // READ: Your Google Sheet (publicly readable or accessible to your account)
     const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1eJXlxFlvBtjs28ynhjEGfs9eGGyZmUEXN9IPntjYWwc/export?format=csv&gid=0';
     // WRITE: Apps Script Web App URL (you will paste after creating it)
-    const SHEET_WRITE_URL = 'https://script.google.com/macros/s/AKfycbwhYP2C0xBn-hzFMbKrLxheP20lgd0QwFVeFuvcbNwUbt58sF8DTrB1RdzohJekbBpR/exec';
+    const SHEET_WRITE_URL = 'https://script.google.com/macros/s/AKfycbwxb7XojgF6xSc5OpHXchve3AQn2qYoa-NwcDI82Jp9T2GuULfqCGZVxEYF_9N1BwrZ/exec';
 
 
     let sheetWords = null;
@@ -403,5 +403,6 @@ function setTheme(mode) {
     const btn = document.getElementById('theme-toggle');
     if (btn) btn.textContent = (mode === 'dark') ? '☀️' : '🌙';
 }
+
 
 
