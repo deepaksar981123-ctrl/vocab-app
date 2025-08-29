@@ -97,7 +97,6 @@
                         <div class="word">${w.word}</div>
                         <span class="badge">${w.pos || ''}</span>
                         <span class="sync ${status}">${status === 'synced' ? '✅' : '🔄'}</span>
-                        <button class="delete-word-btn" data-word="${w.word}" aria-label="Delete Word">🗑️</button>
                     </div>
                 `;
                 div.addEventListener('click', () => showWordPopup(w));
@@ -118,15 +117,7 @@
         });
 
         // Event listener for delete buttons
-        results.querySelectorAll('.delete-word-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent opening the popup when clicking delete
-                const wordToDelete = btn.dataset.word;
-                if (wordToDelete) {
-                    deleteWord(wordToDelete);
-                }
-            });
-        });
+        // Removed delete buttons from here as per user request
     }
 
     function loadFromSheetCsv() {
@@ -259,6 +250,7 @@
 
         showLoader(true);
         const payload = { action: 'delete', word: wordToDelete };
+        console.log('deleteWord: Sending delete payload:', payload); // Added console.log
         
         try {
             const response = await fetch(SHEET_WRITE_URL, {
@@ -267,6 +259,7 @@
                 body: JSON.stringify(payload)
             });
             const result = await response.json();
+            console.log('deleteWord: Received response:', result); // Added console.log
 
             if (result.result === 'success') {
                 toast(`"${wordToDelete}" deleted successfully from Google Sheet`, 'success');
