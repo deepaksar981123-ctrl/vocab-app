@@ -493,10 +493,16 @@ h2 { font-size: 20px; margin: 12px 0; }
     background: linear-gradient(180deg, var(--card), rgba(255,255,255,0.92));
     border: 1px solid var(--border);
 }
-.list-item .word { font-size: 18px; display: flex; align-items: center; gap: 8px; }
-.list-item .badge { transform: translateY(-2px); }
+.list-item .word-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.list-item .word { font-size: 20px; font-weight: 700; }
+.list-item .badge { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: #bfdbfe; color: #1e40af; }
 .list-item .meaning { margin-top: 6px; font-size: 14px; }
-.list-item .sync { margin-left: auto; font-size: 12px; padding: 2px 8px; border-radius: 999px; }
+.list-item .sync { margin-left: auto; font-size: 12px; padding: 4px 10px; border-radius: 999px; display: flex; align-items: center; gap: 4px; }
 .list-item .sync.synced { background: #dcfce7; color: #166534; }
 .list-item .sync.pending { background: #fef9c3; color: #92400e; }
 .list-item .example { margin-top: 8px; font-size: 13px; color: #64748b; }
