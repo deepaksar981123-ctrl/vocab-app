@@ -2,11 +2,10 @@
     const views = document.querySelectorAll('.view');
     const navButtons = document.querySelectorAll('.nav-btn');
     const themeToggle = document.getElementById('theme-toggle');
-    // READ: Your Google Sheet (publicly readable or accessible to your account)
-    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1eJXlxFlvBtjs28ynhjEGfs9eGGyZmUEXN9IPntjYWwc/export?format=csv&gid=0';
-    // WRITE: Apps Script Web App URL (you will paste after creating it)
-    const SHEET_WRITE_URL = 'https://script.google.com/macros/s/AKfycbwxb7XojgF6xSc5OpHXchve3AQn2qYoa-NwcDI82Jp9T2GuULfqCGZVxEYF_9N1BwrZ/exec';
 
+    // ✅ Correct URLs
+    const SHEET_WRITE_URL = 'https://script.google.com/macros/s/AKfycbwwA0PAmRZQxtM_mBS6t3E9pwBzOzOWiFsyTtFC9Hymz5oyw_lMXdn-h1Rth8Fszko/exec';
+    const SHEET_CSV_URL = SHEET_WRITE_URL; // Now reading from the same Apps Script endpoint
 
     let sheetWords = null;
 
@@ -19,16 +18,25 @@
     async function flushQueue() {
         if (!SHEET_WRITE_URL) return;
         let q = loadQueue();
-        if (!q.length) return;
+        if (!q.length) {
+            console.log('flushQueue: Queue is empty, nothing to sync.');
+            return;
+        }
+        console.log(`flushQueue: Attempting to sync ${q.length} pending operations.`);
         const remaining = [];
         for (const op of q) {
             try {
+                console.log('flushQueue: Sending operation:', op);
                 await fetch(SHEET_WRITE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(op) });
-            } catch { remaining.push(op); }
+                console.log('flushQueue: Operation sent successfully:', op);
+            } catch (error) {
+                console.error('flushQueue: Failed to send operation:', op, error);
+                remaining.push(op);
+            }
         }
         saveQueue(remaining);
         if (remaining.length === 0) toast('All pending changes synced', 'success');
-        // Update badges
+        else toast(`${remaining.length} changes still pending sync`, 'error');
         setupSearch(sheetWords || []);
     }
     window.addEventListener('online', flushQueue);
@@ -37,7 +45,6 @@
         views.forEach(v => v.classList.remove('active'));
         const el = document.getElementById(id);
         if (el) el.classList.add('active');
-        // set active button style
         navButtons.forEach(b => b.classList.toggle('active', b.dataset.target === id));
     }
 
@@ -45,13 +52,11 @@
         btn.addEventListener('click', () => showView(btn.dataset.target));
     });
 
-    // Home CTA opens search list
     const homeCta = document.getElementById('home-cta');
     if (homeCta) {
         homeCta.addEventListener('click', () => showView('search'));
     }
 
-    // theme handling
     initTheme();
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
@@ -63,23 +68,19 @@
     // Load order: Google Sheet + local cache merge
     const localCache = loadLocalCache();
     showLoader(true);
-    
-    showLoader(true);
-fetch(SHEET_WRITE_URL)
-    .then(res => res.json())
-    .then(words => {
-        sheetWords = mergeUniqueByWord(localCache.concat(words));
-        setupSearch(sheetWords);
-        showLoader(false);
-        toast('Loaded words from Google Sheet', 'success');
-    })
-    .catch(() => {
-        sheetWords = localCache;
-        setupSearch(sheetWords);
-        showLoader(false);
-        toast('Offline mode — showing saved words', 'error');
-    });
-
+    loadFromSheetCsv()
+        .then(words => {
+            sheetWords = mergeUniqueByWord(localCache.concat(words));
+            setupSearch(sheetWords);
+            showLoader(false);
+            toast('Loaded words from Google Sheet', 'success');
+        })
+        .catch(() => {
+            sheetWords = localCache;
+            setupSearch(sheetWords);
+            showLoader(false);
+            toast('Offline mode — showing saved words', 'error');
+        });
 
     function setupSearch(words) {
         const input = document.getElementById('search-input');
@@ -96,14 +97,13 @@ fetch(SHEET_WRITE_URL)
                         <div class="word">${w.word}</div>
                         <span class="badge">${w.pos || ''}</span>
                         <span class="sync ${status}">${status === 'synced' ? '✅' : '🔄'}</span>
+                        <button class="delete-word-btn" data-word="${w.word}" aria-label="Delete Word">🗑️</button>
                     </div>
-                   
                 `;
                 div.addEventListener('click', () => showWordPopup(w));
                 results.appendChild(div);
             });
         };
-
         render(words);
 
         input.addEventListener('input', () => {
@@ -116,162 +116,48 @@ fetch(SHEET_WRITE_URL)
             );
             render(filtered);
         });
-    }
 
-    // fallback chips removed; app now relies only on Google Sheet
-
-    function openDetails(wordOrObj) {
-        const clicked = typeof wordOrObj === 'string' ? { word: wordOrObj } : (wordOrObj || {});
-        const source = sheetWords || [];
-        const fromSheet = source.find(x => (x.word || '').toLowerCase() === (clicked.word || '').toLowerCase());
-        const data = Object.assign({
-            pos: '',
-            pronunciation: '',
-            hindiMeaning: clicked.hindiMeaning || clicked.meaning || '',
-            meaning: clicked.meaning || '',
-            examples: clicked.example || '',
-            mnemonic: '',
-            oneLiner: '',
-            uses: '',
-            synonyms: clicked.synonyms || []
-        }, clicked, fromSheet || {});
-
-        document.getElementById('detail-title').textContent = data.word || '';
-        document.getElementById('detail-pos').textContent = data.pos || '';
-        document.getElementById('detail-pron').textContent = data.pronunciation || '';
-        document.getElementById('detail-hi').textContent = data.hindiMeaning || '';
-        document.getElementById('detail-en').textContent = data.meaning || '';
-        document.getElementById('detail-syn').textContent = (data.synonyms && data.synonyms.length) ? `Synonyms: ${data.synonyms.join(', ')}` : '';
-        document.getElementById('detail-ex').textContent = data.examples || '';
-        document.getElementById('detail-mn').textContent = data.mnemonic || '';
-        document.getElementById('detail-one').textContent = data.oneLiner || '';
-        document.getElementById('detail-uses').textContent = data.uses || '';
-        const modal = document.getElementById('detail-modal');
-        modal.classList.add('show');
-        modal.setAttribute('aria-hidden', 'false');
-        modal.querySelectorAll('[data-close-modal]').forEach(el => el.addEventListener('click', closeDetails, { once: true }));
-    }
-
-    // New beautiful popup function
-    function showWordPopup(wordOrObj) {
-        const clicked = typeof wordOrObj === 'string' ? { word: wordOrObj } : (wordOrObj || {});
-        const source = sheetWords || [];
-        const fromSheet = source.find(x => (x.word || '').toLowerCase() === (clicked.word || '').toLowerCase());
-        const data = Object.assign({
-            pronunciation: '',
-            hindiMeaning: clicked.hindiMeaning || clicked.meaning || '',
-            meaning: clicked.meaning || '',
-            example: clicked.example || '',
-            synonyms: clicked.synonyms || [],
-            mnemonic: clicked.mnemonic || ''
-        }, clicked, fromSheet || {});
-
-        // Set popup content
-        document.getElementById('popup-word').textContent = data.word || '';
-        document.getElementById('popup-pronunciation').textContent = data.pronunciation || 'Pronunciation not available';
-        document.getElementById('popup-pos').textContent = data.pos || '—';
-        document.getElementById('popup-hindi-meaning').textContent = data.hindiMeaning || 'Hindi meaning not available';
-        document.getElementById('popup-english-meaning').textContent = data.meaning || 'English meaning not available';
-        document.getElementById('popup-synonyms').textContent = (data.synonyms && data.synonyms.length) ? data.synonyms.join(', ') : 'Synonyms not available';
-        document.getElementById('popup-example').textContent = data.example || 'Example not available';
-        document.getElementById('popup-mnemonic').textContent = data.mnemonic || 'Mnemonic story not available';
-
-        // Set data labels for the ::before pseudo-elements
-        document.getElementById('popup-pronunciation').setAttribute('data-label', 'Pronunciation');
-        document.getElementById('popup-pos').setAttribute('data-label', '');
-        document.getElementById('popup-hindi-meaning').setAttribute('data-label', 'Hindi Meaning');
-        document.getElementById('popup-english-meaning').setAttribute('data-label', 'English Meaning');
-        document.getElementById('popup-synonyms').setAttribute('data-label', 'Synonyms');
-        document.getElementById('popup-example').setAttribute('data-label', 'Example');
-        document.getElementById('popup-mnemonic').setAttribute('data-label', 'Mnemonic Story');
-
-        // Show popup
-        const popup = document.getElementById('word-popup');
-        popup.classList.add('show');
-        popup.setAttribute('aria-hidden', 'false');
-
-        // Enable edit/delete only for locally added words (from local cache)
-        const cache = loadLocalCache();
-        const isLocal = cache.some(w => (w.word || '').toLowerCase() === (data.word || '').toLowerCase());
-        const deleteBtn = document.getElementById('popup-delete');
-        const editBtn = document.getElementById('popup-edit');
-        if (deleteBtn) deleteBtn.style.display = isLocal ? 'flex' : 'none';
-        if (editBtn) editBtn.style.display = isLocal ? 'flex' : 'none';
-        if (isLocal && deleteBtn) {
-            deleteBtn.onclick = () => {
-                const updated = cache.filter(w => (w.word || '').toLowerCase() !== (data.word || '').toLowerCase());
-                saveLocalCache(updated);
-                sheetWords = mergeUniqueByWord(updated.concat(sheetWords || []));
-                setupSearch(sheetWords);
-                closeWordPopup();
-                // Queue delete for sheet
-                enqueueOp({ action: 'delete', word: data.word });
-                flushQueue();
-            };
-        }
-        if (isLocal && editBtn) {
-            editBtn.onclick = () => {
-                // Prefill form and switch to Add Word view
-                showView('add-word');
-                document.getElementById('new-word').value = data.word || '';
-                document.getElementById('new-pronunciation').value = data.pronunciation || '';
-                document.getElementById('new-hindi-meaning').value = data.hindiMeaning || '';
-                document.getElementById('new-english-meaning').value = data.meaning || '';
-                document.getElementById('new-example').value = data.example || '';
-                document.getElementById('new-pos').value = data.pos || '';
-                document.getElementById('new-synonyms').value = (data.synonyms || []).join(', ');
-                document.getElementById('new-mnemonic').value = data.mnemonic || '';
-
-                // Store the original word to identify for update
-                window._editingWord = data.word;
-                closeWordPopup();
-            };
-        }
-
-        // Add close event listeners
-        popup.querySelectorAll('[data-close-popup]').forEach(el => {
-            el.addEventListener('click', closeWordPopup, { once: true });
+        // Event listener for delete buttons
+        results.querySelectorAll('.delete-word-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent opening the popup when clicking delete
+                const wordToDelete = btn.dataset.word;
+                if (wordToDelete) {
+                    deleteWord(wordToDelete);
+                }
+            });
         });
     }
 
-    function closeWordPopup() {
-        const popup = document.getElementById('word-popup');
-        popup.classList.remove('show');
-        popup.setAttribute('aria-hidden', 'true');
-    }
-
-    function closeDetails() {
-        const modal = document.getElementById('detail-modal');
-        modal.classList.remove('show');
-        modal.setAttribute('aria-hidden', 'true');
-    }
-
     function loadFromSheetCsv() {
-        return new Promise((resolve, reject) => {
-            if (!window.Papa || !SHEET_CSV_URL) return reject('CSV not available');
-            Papa.parse(SHEET_CSV_URL, {
-                download: true,
-                header: true,
-                skipEmptyLines: true,
-                complete: (results) => {
-                    const rows = results.data || [];
-                    const words = rows.map(r => ({
-                        word: (r['Main Word'] || '').trim(),
-                        synonyms: (r['Synonyms (Comma Separated)'] || '').split(',').map(s => s.trim()).filter(Boolean),
-                        pronunciation: (r['Pronunciation (उच्चारण)'] || '').trim(),
-                        hindiMeaning: (r['Hindi Meaning'] || '').trim(),
-                        meaning: (r['English Meaning'] || '').trim(),
-                        examples: (r['Examples (Daily Life)'] || '').trim(),
-                        mnemonic: (r['Mnemonic Story'] || '').trim(),
-                        oneLiner: (r['One-Liner'] || '').trim(),
-                        uses: (r['Uses'] || '').trim(),
-                        pos: (r['Part of Speech'] || '').trim(),
-                        example: (r['Examples (Daily Life)'] || '').trim()
+        return new Promise(async (resolve, reject) => {
+            if (!SHEET_CSV_URL) return reject('Sheet URL not available');
+
+            try {
+                const response = await fetch(SHEET_CSV_URL);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const json = await response.json();
+                if (json.result === 'success' && Array.isArray(json.words)) {
+                    const words = json.words.map(r => ({
+                        word: r.word || '',
+                        synonyms: Array.isArray(r.synonyms) ? r.synonyms : (r.synonyms || '').split(',').map(s => s.trim()).filter(Boolean),
+                        pronunciation: r.pronunciation || '',
+                        hindiMeaning: r.hindiMeaning || '',
+                        meaning: r.meaning || '',
+                        example: r.example || '',
+                        mnemonic: r.mnemonic || '',
+                        oneLiner: r.oneLiner || '',
+                        uses: r.uses || '',
+                        pos: r.pos || '',
                     })).filter(x => x.word);
                     resolve(words);
-                },
-                error: (err) => reject(err)
-            });
+                } else {
+                    reject('Invalid data format from Google Sheet');
+                }
+            } catch (err) {
+                console.error('Error loading words from Apps Script:', err);
+                reject(err);
+            }
         });
     }
 
@@ -327,12 +213,105 @@ fetch(SHEET_WRITE_URL)
         return pending ? 'pending' : 'synced';
     }
 
+    // New Beautiful Word Popup Logic
+    const wordPopup = document.getElementById('word-popup');
+    const popupWord = document.getElementById('popup-word');
+    const popupPos = document.getElementById('popup-pos');
+    const popupPronunciation = document.getElementById('popup-pronunciation');
+    const popupHindiMeaning = document.getElementById('popup-hindi-meaning');
+    const popupEnglishMeaning = document.getElementById('popup-english-meaning');
+    const popupSynonyms = document.getElementById('popup-synonyms');
+    const popupExample = document.getElementById('popup-example');
+    const popupMnemonic = document.getElementById('popup-mnemonic');
+    const popupDelete = document.getElementById('popup-delete');
+    const popupEdit = document.getElementById('popup-edit');
+
+    function showWordPopup(wordData) {
+        if (!wordPopup) return;
+        
+        popupWord.textContent = wordData.word || '—';
+        popupPos.textContent = wordData.pos || '—';
+        popupPronunciation.textContent = wordData.pronunciation || '—';
+        popupHindiMeaning.textContent = wordData.hindiMeaning || '—';
+        popupEnglishMeaning.textContent = wordData.meaning || '—';
+        popupSynonyms.textContent = (wordData.synonyms && wordData.synonyms.length > 0) ? wordData.synonyms.join(', ') : '—';
+        popupExample.textContent = wordData.example || '—';
+        popupMnemonic.textContent = wordData.mnemonic || '—';
+
+        wordPopup.classList.add('show');
+        wordPopup.setAttribute('aria-hidden', 'false');
+
+        // Store current word for edit/delete operations
+        window._currentWordData = wordData;
+    }
+
+    function closeWordPopup() {
+        if (!wordPopup) return;
+        wordPopup.classList.remove('show');
+        wordPopup.setAttribute('aria-hidden', 'true');
+        window._currentWordData = null; // Clear stored word data
+    }
+
+    async function deleteWord(wordToDelete) {
+        if (!confirm(`Are you sure you want to delete "${wordToDelete}"?`)) {
+            return;
+        }
+
+        showLoader(true);
+        const payload = { action: 'delete', word: wordToDelete };
+        
+        try {
+            const response = await fetch(SHEET_WRITE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+
+            if (result.result === 'success') {
+                toast(`"${wordToDelete}" deleted successfully from Google Sheet`, 'success');
+                // Remove from local cache and sheetWords array
+                let cache = loadLocalCache();
+                cache = cache.filter(w => (w.word || '').toLowerCase() !== wordToDelete.toLowerCase());
+                saveLocalCache(cache);
+
+                if (Array.isArray(sheetWords)) {
+                    sheetWords = sheetWords.filter(w => (w.word || '').toLowerCase() !== wordToDelete.toLowerCase());
+                }
+                setupSearch(sheetWords); // Re-render the list
+            } else {
+                toast(`Failed to delete "${wordToDelete}": ${result.message}`, 'error');
+                enqueueOp(payload); // Enqueue for retry if deletion failed on server
+            }
+        } catch (error) {
+            console.error('Error deleting word:', error);
+            toast(`Failed to delete "${wordToDelete}" (offline/network error)`, 'error');
+            enqueueOp(payload); // Enqueue for retry
+        }
+        showLoader(false);
+        closeWordPopup();
+    }
+
+
+    // Add event listeners for closing the popup
+    document.querySelectorAll('[data-close-popup]').forEach(btn => {
+        btn.addEventListener('click', closeWordPopup);
+    });
+
+    // Add event listener for the popup delete button
+    if (popupDelete) {
+        popupDelete.addEventListener('click', () => {
+            if (window._currentWordData && window._currentWordData.word) {
+                deleteWord(window._currentWordData.word);
+            }
+        });
+    }
+
     // Add Word Form Handling
     const wordForm = document.getElementById('word-form');
     if (wordForm) {
         wordForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
             const newWord = {
                 word: document.getElementById('new-word').value.trim(),
                 pronunciation: document.getElementById('new-pronunciation').value.trim(),
@@ -343,37 +322,29 @@ fetch(SHEET_WRITE_URL)
                 synonyms: document.getElementById('new-synonyms').value.split(',').map(s => s.trim()).filter(Boolean),
                 mnemonic: document.getElementById('new-mnemonic').value.trim()
             };
-
-            // Validation: prevent duplicates (only for new words, not updates)
             const isUpdate = !!window._editingWord;
             if (!newWord.word) { toast('Please enter a word', 'error'); return; }
             if (!isUpdate) {
                 const exists = (sheetWords||[]).some(w => (w.word||'').toLowerCase() === newWord.word.toLowerCase());
                 if (exists) { toast('This word already exists', 'error'); return; }
             }
-            
-            // Add to local cache and in-memory list for instant UI
             let cache = loadLocalCache();
-            // If updating, remove the old version from cache first
             if (isUpdate) {
                 cache = cache.filter(w => (w.word || '').toLowerCase() !== (window._editingWord || '').toLowerCase());
             }
             cache = [newWord].concat(cache.filter(w => (w.word || '').toLowerCase() !== newWord.word.toLowerCase()));
             saveLocalCache(cache);
             if (!Array.isArray(sheetWords)) sheetWords = [];
-            // If updating, remove the old version from sheetWords first
             if (isUpdate) {
                 sheetWords = sheetWords.filter(w => (w.word || '').toLowerCase() !== (window._editingWord || '').toLowerCase());
             }
             sheetWords = mergeUniqueByWord([newWord].concat(sheetWords));
-            
-            // Also persist to Google Sheet (if write endpoint configured)
             if (SHEET_WRITE_URL) {
                 showLoader(true);
                 const payload = isUpdate ? { action: 'update', oldWord: window._editingWord, ...newWord } : { action: 'create', ...newWord };
                 fetch(SHEET_WRITE_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain' }, // Changed from application/json
                     body: JSON.stringify(payload)
                 }).then(() => { toast(isUpdate ? 'Updated in Google Sheet' : 'Saved to Google Sheet', 'success'); showLoader(false); flushQueue(); })
                   .catch(() => { enqueueOp(payload); toast(isUpdate ? 'Updated locally (pending sync)' : 'Saved locally (pending sync)', 'error'); showLoader(false); });
@@ -381,31 +352,15 @@ fetch(SHEET_WRITE_URL)
                 const payload = isUpdate ? { action: 'update', oldWord: window._editingWord, ...newWord } : { action: 'create', ...newWord };
                 enqueueOp(payload);
             }
-            
-            // Clear editing state
             window._editingWord = null;
-            
-            // Refresh search results
             setupSearch(sheetWords);
-            
-            // Show success message
             const successMsg = document.getElementById('add-word-success');
             successMsg.style.display = 'block';
-            
-            // Reset form
             wordForm.reset();
-            
-            // Hide success message after 3 seconds
-            setTimeout(() => {
-                successMsg.style.display = 'none';
-            }, 3000);
-            
-            // Switch to search view to show the new word
+            setTimeout(() => { successMsg.style.display = 'none'; }, 3000);
             showView('search');
         });
     }
-    
-    // Delete support not implemented for Google Sheet; can be added via Apps Script later
 })();
 
 function initTheme() {
@@ -424,6 +379,3 @@ function setTheme(mode) {
     const btn = document.getElementById('theme-toggle');
     if (btn) btn.textContent = (mode === 'dark') ? '☀️' : '🌙';
 }
-
-
-
