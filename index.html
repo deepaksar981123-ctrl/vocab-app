@@ -61,32 +61,32 @@
                 <form id="word-form">
                     <div class="form-group">
                         <label for="new-word">Word *</label>
-                        <input type="text" id="new-word" required placeholder="Enter English word">
+                        <input type="text" id="new-word" name="word" required placeholder="Enter English word">
                     </div>
                     
                     <div class="form-group">
                         <label for="new-pronunciation">Pronunciation (उच्चारण)</label>
-                        <input type="text" id="new-pronunciation" placeholder="e.g., pom-puhs">
+                        <input type="text" id="new-pronunciation" name="pronunciation" placeholder="e.g., pom-puhs">
                     </div>
                     
                     <div class="form-group">
                         <label for="new-hindi-meaning">Hindi Meaning</label>
-                        <input type="text" id="new-hindi-meaning" placeholder="हिंदी में अर्थ">
+                        <input type="text" id="new-hindi-meaning" name="hindiMeaning" placeholder="हिंदी में अर्थ">
                     </div>
                     
                     <div class="form-group">
                         <label for="new-english-meaning">English Meaning *</label>
-                        <textarea id="new-english-meaning" required placeholder="Enter English definition"></textarea>
+                        <textarea id="new-english-meaning" name="meaning" required placeholder="Enter English definition"></textarea>
                     </div>
                     
                     <div class="form-group">
                         <label for="new-example">Example</label>
-                        <textarea id="new-example" placeholder="Usage example"></textarea>
+                        <textarea id="new-example" name="example" placeholder="Usage example"></textarea>
                     </div>
                     
                     <div class="form-group">
                         <label for="new-pos">Part of Speech</label>
-                        <select id="new-pos">
+                        <select id="new-pos" name="pos">
                             <option value="">Select...</option>
                             <option value="noun">Noun</option>
                             <option value="verb">Verb</option>
@@ -99,12 +99,12 @@
                     
                     <div class="form-group">
                         <label for="new-synonyms">Synonyms (comma separated)</label>
-                        <input type="text" id="new-synonyms" placeholder="similar, alike, same">
+                        <input type="text" id="new-synonyms" name="synonyms" placeholder="similar, alike, same">
                     </div>
                     
                     <div class="form-group">
                         <label for="new-mnemonic">Mnemonic Story</label>
-                        <textarea id="new-mnemonic" placeholder="A short story or trick to remember this word"></textarea>
+                        <textarea id="new-mnemonic" name="mnemonic" placeholder="A short story or trick to remember this word"></textarea>
                     </div>
                     
                     <button type="submit" class="nav-btn">Add Word</button>
@@ -174,7 +174,7 @@
                 </div>
             </div>
             <button class="popup-close" data-close-popup aria-label="Close">✖</button>
-            <button class="popup-delete" id="popup-delete" aria-label="Delete Word" style="display: none;">🗑️</button>
+            <button class="popup-delete" id="popup-delete" aria-label="Delete Word">🗑️</button>
             <button class="popup-edit" id="popup-edit" aria-label="Edit Word" style="display: none;">✎</button>
         </div>
     </div>
