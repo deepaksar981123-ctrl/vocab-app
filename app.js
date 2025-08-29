@@ -92,9 +92,12 @@ fetch(SHEET_WRITE_URL)
                 div.style.setProperty('--stagger', `${i * 40}ms`);
                 const status = getSyncStatus(w.word);
                 div.innerHTML = `
-                    <div class="word">${w.word} <span class="badge">${w.pos || ''}</span> <span class="sync ${status}">${status === 'synced' ? '✅ Synced' : '🔄 Pending'}</span></div>
-                    <div class="meaning">${w.hindiMeaning || w.meaning || ''}</div>
-                    <div class="example">${w.example || ''}</div>
+                    <div class="word-header">
+                        <div class="word">${w.word}</div>
+                        <span class="badge">${w.pos || ''}</span>
+                        <span class="sync ${status}">${status === 'synced' ? '✅' : '🔄'}</span>
+                    </div>
+                   
                 `;
                 div.addEventListener('click', () => showWordPopup(w));
                 results.appendChild(div);
@@ -218,6 +221,9 @@ fetch(SHEET_WRITE_URL)
                 document.getElementById('new-pos').value = data.pos || '';
                 document.getElementById('new-synonyms').value = (data.synonyms || []).join(', ');
                 document.getElementById('new-mnemonic').value = data.mnemonic || '';
+
+                // Store the original word to identify for update
+                window._editingWord = data.word;
                 closeWordPopup();
             };
         }
@@ -338,31 +344,46 @@ fetch(SHEET_WRITE_URL)
                 mnemonic: document.getElementById('new-mnemonic').value.trim()
             };
 
-            // Validation: prevent duplicates
+            // Validation: prevent duplicates (only for new words, not updates)
+            const isUpdate = !!window._editingWord;
             if (!newWord.word) { toast('Please enter a word', 'error'); return; }
-            const exists = (sheetWords||[]).some(w => (w.word||'').toLowerCase() === newWord.word.toLowerCase());
-            if (exists) { toast('This word already exists', 'error'); return; }
+            if (!isUpdate) {
+                const exists = (sheetWords||[]).some(w => (w.word||'').toLowerCase() === newWord.word.toLowerCase());
+                if (exists) { toast('This word already exists', 'error'); return; }
+            }
             
             // Add to local cache and in-memory list for instant UI
             let cache = loadLocalCache();
-            // replace if same word exists
+            // If updating, remove the old version from cache first
+            if (isUpdate) {
+                cache = cache.filter(w => (w.word || '').toLowerCase() !== (window._editingWord || '').toLowerCase());
+            }
             cache = [newWord].concat(cache.filter(w => (w.word || '').toLowerCase() !== newWord.word.toLowerCase()));
             saveLocalCache(cache);
             if (!Array.isArray(sheetWords)) sheetWords = [];
+            // If updating, remove the old version from sheetWords first
+            if (isUpdate) {
+                sheetWords = sheetWords.filter(w => (w.word || '').toLowerCase() !== (window._editingWord || '').toLowerCase());
+            }
             sheetWords = mergeUniqueByWord([newWord].concat(sheetWords));
             
             // Also persist to Google Sheet (if write endpoint configured)
             if (SHEET_WRITE_URL) {
                 showLoader(true);
+                const payload = isUpdate ? { action: 'update', oldWord: window._editingWord, ...newWord } : { action: 'create', ...newWord };
                 fetch(SHEET_WRITE_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'create', ...newWord })
-                }).then(() => { toast('Saved to Google Sheet', 'success'); showLoader(false); flushQueue(); })
-                  .catch(() => { enqueueOp({ action: 'create', ...newWord }); toast('Saved locally (pending sync)', 'error'); showLoader(false); });
+                    body: JSON.stringify(payload)
+                }).then(() => { toast(isUpdate ? 'Updated in Google Sheet' : 'Saved to Google Sheet', 'success'); showLoader(false); flushQueue(); })
+                  .catch(() => { enqueueOp(payload); toast(isUpdate ? 'Updated locally (pending sync)' : 'Saved locally (pending sync)', 'error'); showLoader(false); });
             } else {
-                enqueueOp({ action: 'create', ...newWord });
+                const payload = isUpdate ? { action: 'update', oldWord: window._editingWord, ...newWord } : { action: 'create', ...newWord };
+                enqueueOp(payload);
             }
+            
+            // Clear editing state
+            window._editingWord = null;
             
             // Refresh search results
             setupSearch(sheetWords);
