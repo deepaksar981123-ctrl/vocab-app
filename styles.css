@@ -443,12 +443,12 @@ h2 { font-size: 20px; margin: 12px 0; }
 
 .popup-delete {
     position: absolute;
-    top: -15px;
-    left: -15px;
+    top: -15px; /* Adjust as needed */
+    left: -15px; /* Adjust as needed */
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: #dc2626;
+    background: #dc2626; /* Red background */
     color: white;
     border: none;
     cursor: pointer;
@@ -458,6 +458,7 @@ h2 { font-size: 20px; margin: 12px 0; }
     justify-content: center;
     box-shadow: 0 4px 16px rgba(220, 38, 38, 0.3);
     transition: all 0.2s ease;
+    z-index: 10; /* Ensure it's above other elements */
 }
 
 .popup-delete:hover {
