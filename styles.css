@@ -337,7 +337,7 @@ h2 { font-size: 20px; margin: 12px 0; }
 .popup-body {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 18px; /* Reduced from 20px */
 }
 
 .popup-pronunciation,
@@ -346,7 +346,7 @@ h2 { font-size: 20px; margin: 12px 0; }
 .popup-synonyms,
 .popup-example,
 .popup-mnemonic {
-    padding: 16px;
+    padding: 18px; /* Reduced from 16px */
     background: #f8f9fa;
     border-radius: 12px;
     border-left: 4px solid #007bff;
@@ -357,12 +357,12 @@ h2 { font-size: 20px; margin: 12px 0; }
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 0; /* Removed as h3 label will handle spacing */
     font-weight: 600;
 }
 .popup-pos::before {
-    content: 'Part of Speech';
-    display: inline-block;
+    /* content: 'Part of Speech'; */ /* Removed as h3 label is now used */
+    display: none; /* Hide the pseudo-element */
     padding: 4px 10px;
     border-radius: 999px;
     background: var(--badge-bg);
@@ -401,14 +401,22 @@ h2 { font-size: 20px; margin: 12px 0; }
     border-left-color: #a855f7;
 }
 
+.popup-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-top: 1px; /* Adjusted for better spacing with new gap */
+    margin-bottom: 1px; /* Further reduced from 4px */
+}
+
 .popup-pronunciation::before,
 .popup-hindi-meaning::before,
 .popup-english-meaning::before,
 .popup-synonyms::before,
 .popup-example::before,
 .popup-mnemonic::before {
-    content: attr(data-label);
-    display: block;
+    /* content: attr(data-label); */ /* Removed as h3 labels are now used */
+    display: none; /* Hide the pseudo-element to allow h3 labels to show */
     font-size: 12px;
     font-weight: 600;
     color: #666;
