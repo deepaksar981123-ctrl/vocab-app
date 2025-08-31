@@ -226,7 +226,7 @@
         popupHindiMeaning.textContent = wordData.hindiMeaning || '—';
         popupEnglishMeaning.textContent = wordData.meaning || '—';
         popupSynonyms.textContent = (wordData.synonyms && wordData.synonyms.length > 0) ? wordData.synonyms.join(', ') : '—';
-        popupExample.textContent = wordData.example || '—';
+        popupExample.innerHTML = wordData.example ? formatExampleText(wordData.example) : '—';
         popupMnemonic.textContent = wordData.mnemonic || '—';
 
         wordPopup.classList.add('show');
@@ -371,4 +371,34 @@ function setTheme(mode) {
     localStorage.setItem('theme', mode);
     const btn = document.getElementById('theme-toggle');
     if (btn) btn.textContent = (mode === 'dark') ? '☀️' : '🌙';
+}
+
+// Helper function to format example text
+function formatExampleText(text) {
+    if (!text) return '—';
+
+    let formattedText = text;
+
+    // 1. Insert <br/> before an opening parenthesis that follows a sentence-ending punctuation.
+    // This ensures "English. (Hindi)" becomes "English.<br/>(Hindi)"
+    formattedText = formattedText.replace(/([.!?])(?=\s*\()/g, '$1<br/>');
+
+    // 2. Insert <br/> after any closing parenthesis if it's followed by text or a bullet point.
+    // This ensures "(Hindi)English" becomes "(Hindi)<br/>English" and "(Hindi)• Example" -> "(Hindi)<br/>• Example"
+    formattedText = formattedText.replace(/\)\s*(?=[A-Za-z0-9•])/g, ')<br/>');
+
+    // 3. Insert <br/> after sentence-ending punctuation that is not already handled
+    // (i.e., not followed by a parenthesis or an existing <br/>)
+    // This handles "English. English." -> "English.<br/>English."
+    formattedText = formattedText.replace(/([.!?])\s*(?!(\(|<br\/>))/g, '$1<br/>');
+
+    // 4. Ensure bullet points always start on a new line.
+    // This handles "Text • Bullet point" -> "Text<br/>• Bullet point"
+    formattedText = formattedText.replace(/([A-Za-z0-9])\s*•/g, '$1<br/>•');
+    formattedText = formattedText.replace(/^•/g, '<br/>•'); // For bullet point at the very beginning
+
+    // 5. Clean up any multiple consecutive line breaks.
+    formattedText = formattedText.replace(/(<br\/>\s*){2,}/g, '<br/>');
+
+    return formattedText.trim();
 }
