@@ -89,8 +89,7 @@
             results.innerHTML = '';
             items.slice(0, 50).forEach((w, i) => {
                 const div = document.createElement('div');
-                div.className = 'list-item';
-                div.style.setProperty('--stagger', `${i * 40}ms`);
+                div.className = 'list-item bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700 w-full cursor-pointer transition-all duration-150 ease-in-out hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-700';
                 const status = getSyncStatus(w.word);
                 div.innerHTML = `
                     <div class="word-header">
@@ -352,6 +351,186 @@
             wordForm.reset();
             setTimeout(() => { successMsg.style.display = 'none'; }, 3000);
             showView('search');
+        });
+    }
+
+    // Exam PDFs Feature Start
+    // Show Exam PDFs section when clicking navbar or home page button
+    const examPdfsBtn = document.getElementById('exam-pdfs-btn');
+    const homeExamPdfsBtn = document.getElementById('home-exam-pdfs');
+    function showExamPdfsView() {
+        views.forEach(v => v.classList.remove('active'));
+        const examView = document.getElementById('exam-pdfs');
+        if (examView) examView.classList.add('active');
+        // Optionally reset PDF list/category selection here
+    }
+    if (examPdfsBtn) {
+        examPdfsBtn.addEventListener('click', showExamPdfsView);
+    }
+    if (homeExamPdfsBtn) {
+        homeExamPdfsBtn.addEventListener('click', showExamPdfsView);
+    }
+
+    // Subject to PDFs mapping
+    const pdfData = {
+  math: [
+    { name: 'RS Aggarwal', file: 'pdfs/rs-aggarwal.pdf' },
+    { name: 'Reasoning book by Vikramjeet', file: 'pdfs/Reasoning book by Vikramjeet sir.pdf' }
+  ],
+  gk: [
+    { name: 'Lucent GK', file: 'pdfs/lucent-gk.pdf' },
+    { name: 'Arihant GK', file: 'pdfs/arihant-gk.pdf' }
+  ],
+  english: [
+    { name: 'Wren & Martin', file: 'pdfs/wren-martin.pdf' },
+    { name: 'Plinth to Paramount', file: 'pdfs/plinth-to-paramount.pdf' }
+  ],
+  reasoning: [
+    { name: 'Verbal & Non-Verbal Reasoning', file: 'pdfs/verbal-nonverbal.pdf' },
+    { name: 'Analytical Reasoning', file: 'pdfs/analytical-reasoning.pdf' }
+  ]
+};
+
+
+    // Show PDF list when subject is clicked
+    const pdfCategoryBtns = document.querySelectorAll('.pdf-category-btn');
+    const pdfListDiv = document.getElementById('pdf-list');
+    pdfCategoryBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Remove active from all, add to clicked
+            pdfCategoryBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const cat = btn.getAttribute('data-category');
+            const pdfs = pdfData[cat] || [];
+            if (pdfs.length === 0) {
+                pdfListDiv.innerHTML = '<div style="padding:24px; text-align:center; color:#888;">No PDFs available for this subject.</div>';
+                return;
+            }
+            pdfListDiv.innerHTML = pdfs.map(pdf => `
+                <div class="pdf-item" data-pdf="${pdf.file}" data-title="${pdf.name}">
+                    <div class="pdf-item-title">${pdf.name}</div>
+                    <div class="pdf-item-subject">${btn.textContent}</div>
+                </div>
+            `).join('');
+        });
+    });
+    // Exam PDFs Feature End
+
+    // PDF Modal logic
+    const pdfModal = document.getElementById('pdf-modal');
+    const pdfViewer = document.getElementById('pdf-viewer');
+    const pdfModalTitle = document.getElementById('pdf-modal-title');
+    const pdfModalPages = document.getElementById('pdf-modal-pages');
+    const pdfPrevBtn = document.getElementById('pdf-prev');
+    const pdfNextBtn = document.getElementById('pdf-next');
+    const pdfPageInput = document.getElementById('pdf-page-input');
+    let pdfDoc = null;
+    let currentPage = 1;
+    let totalPages = 1;
+
+    // Open PDF in modal
+    document.addEventListener('click', function(e) {
+        const pdfItem = e.target.closest('.pdf-item');
+        if (pdfItem) {
+            const file = pdfItem.getAttribute('data-pdf');
+            const title = pdfItem.getAttribute('data-title');
+            openPdfModal(file, title);
+        }
+    });
+
+    function openPdfModal(file, title) {
+        if (!pdfModal) return;
+        pdfModal.classList.add('show');
+        pdfModal.style.display = 'flex';
+        pdfModalTitle.textContent = title || 'PDF Viewer';
+        pdfViewer.innerHTML = '<div style="padding:32px; color:#888;">Loading PDF...</div>';
+        loadPdf(file);
+    }
+
+    function closePdfModal() {
+        if (!pdfModal) return;
+        pdfModal.classList.remove('show');
+        pdfModal.style.display = 'none';
+        pdfViewer.innerHTML = '';
+        pdfDoc = null;
+        currentPage = 1;
+        totalPages = 1;
+        pdfModalPages.textContent = '';
+        pdfPageInput.value = 1;
+    }
+
+    // Close modal on close button or backdrop
+    document.querySelectorAll('[data-close-pdf-modal]').forEach(btn => {
+        btn.addEventListener('click', closePdfModal);
+    });
+
+    // Load PDF using PDF.js
+    function loadPdf(file) {
+        const url = file;
+        if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            pdfjsLib.getDocument(url).promise.then(function(pdf) {
+                pdfDoc = pdf;
+                totalPages = pdf.numPages;
+                currentPage = 1;
+                pdfModalPages.textContent = `Page 1 of ${totalPages}`;
+                pdfPageInput.value = 1;
+                pdfPageInput.max = totalPages;
+                renderPage(currentPage);
+            }).catch(function(error) {
+                pdfViewer.innerHTML = '<div style="padding:32px; color:#e53e3e;">Failed to load PDF.<br>' + error.message + '</div>';
+            });
+        } else {
+            pdfViewer.innerHTML = '<div style="padding:32px; color:#e53e3e;">PDF.js not loaded.</div>';
+        }
+    }
+
+    function renderPage(num) {
+        pdfDoc.getPage(num).then(function(page) {
+            const viewport = page.getViewport({ scale: 1.2 });
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            pdfViewer.innerHTML = '';
+            pdfViewer.appendChild(canvas);
+            const renderContext = {
+                canvasContext: ctx,
+                viewport: viewport
+            };
+            page.render(renderContext);
+            pdfModalPages.textContent = `Page ${num} of ${totalPages}`;
+            pdfPageInput.value = num;
+            pdfPrevBtn.disabled = (num <= 1);
+            pdfNextBtn.disabled = (num >= totalPages);
+        });
+    }
+
+    // Next/Prev buttons
+    if (pdfPrevBtn) {
+        pdfPrevBtn.addEventListener('click', function() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderPage(currentPage);
+            }
+        });
+    }
+    if (pdfNextBtn) {
+        pdfNextBtn.addEventListener('click', function() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderPage(currentPage);
+            }
+        });
+    }
+    // Page input
+    if (pdfPageInput) {
+        pdfPageInput.addEventListener('change', function() {
+            let val = parseInt(pdfPageInput.value);
+            if (isNaN(val) || val < 1) val = 1;
+            if (val > totalPages) val = totalPages;
+            currentPage = val;
+            renderPage(currentPage);
         });
     }
 })();
