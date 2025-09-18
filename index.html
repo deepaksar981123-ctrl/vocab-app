@@ -18,8 +18,9 @@
                 <button class="nav-btn" data-target="search">Search</button>
                 <button class="nav-btn" data-target="search" id="nav-vocab">Vocabulary</button>
                 <button class="nav-btn" data-target="quiz">Quiz</button>
-                <button class="nav-btn" data-target="flashcards">Flashcards</button>
+               
                 <button class="nav-btn" data-target="add-word">Add Word</button>
+                <button class="nav-btn" id="exam-pdfs-btn" data-target="exam-pdfs">Exam PDFs</button>
                 <button class="nav-btn" id="theme-toggle" aria-label="Toggle dark mode">🌙</button>
             </nav>
         </div>
@@ -33,7 +34,10 @@
                 <div class="wotd-meaning" id="wotd-meaning">—</div>
                 <div class="wotd-example" id="wotd-example">—</div>
             </div>
-            <button id="home-cta" class="home-cta" aria-label="Open vocabulary">Vocabulary</button>
+            <div class="home-buttons">
+                <button id="home-cta" class="home-cta" aria-label="Open vocabulary">Vocabulary</button>
+                <button id="home-exam-pdfs" class="home-cta exam-pdfs-btn" aria-label="Open Exam PDFs">Exam PDFs</button>
+            </div>
         </section>
 
         <section id="search" class="view">
@@ -115,6 +119,18 @@
                 <p>✅ Word added successfully! You can now search for it.</p>
             </div>
         </section>
+        <!-- Exam PDFs Feature Start -->
+        <section id="exam-pdfs" class="view">
+            <h2>Exam PDFs</h2>
+            <div id="pdf-categories" class="pdf-categories">
+                <button class="pdf-category-btn" data-category="math">Math</button>
+                <button class="pdf-category-btn" data-category="gk/gs">GK/GS</button>
+                <button class="pdf-category-btn" data-category="english">English</button>
+                <button class="pdf-category-btn" data-category="reasoning">Reasoning</button>
+            </div>
+            <div id="pdf-list" class="pdf-list"></div>
+        </section>
+        <!-- Exam PDFs Feature End -->
     </main>
 
     <div id="loader" class="loader hidden" aria-hidden="true">
@@ -178,8 +194,27 @@
             <button class="popup-edit" id="popup-edit" aria-label="Edit Word" style="display: none;">✎</button>
         </div>
     </div>
+    <!-- Exam PDFs Feature Start -->
+    <div id="pdf-modal" class="pdf-modal" aria-hidden="true" style="display:none;">
+        <div class="pdf-modal-backdrop" data-close-pdf-modal></div>
+        <div class="pdf-modal-content">
+            <button class="pdf-modal-close nav-btn" data-close-pdf-modal aria-label="Close">✖</button>
+            <div class="pdf-modal-header">
+                <span id="pdf-modal-title">PDF Viewer</span>
+                <span id="pdf-modal-pages" class="pdf-modal-pages"></span>
+            </div>
+            <div id="pdf-viewer" class="pdf-viewer"></div>
+            <div class="pdf-modal-controls">
+                <button id="pdf-prev" class="nav-btn">Previous</button>
+                <input id="pdf-page-input" type="number" min="1" value="1" style="width: 60px;" />
+                <button id="pdf-next" class="nav-btn">Next</button>
+            </div>
+        </div>
+    </div>
+    <!-- Exam PDFs Feature End -->
 
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script> <!-- Exam PDFs Feature: PDF.js CDN -->
     <script src="app.js"></script>
 </body>
 </html>
