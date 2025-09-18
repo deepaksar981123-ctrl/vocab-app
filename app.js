@@ -373,25 +373,24 @@
 
     // Subject to PDFs mapping
     const pdfData = {
-  math: [
-    { name: 'RS Aggarwal', file: 'pdfs/rs-aggarwal.pdf' },
-    { name: 'Reasoning book by Vikramjeet', file: 'pdfs/Reasoning book by Vikramjeet sir.pdf' }
-  ],
-  gk: [
-    { name: 'Lucent GK', file: 'pdfs/lucent-gk.pdf' },
-    { name: 'Arihant GK', file: 'pdfs/arihant-gk.pdf' }
-  ],
-  english: [
-    { name: 'Wren & Martin', file: 'pdfs/wren-martin.pdf' },
-    { name: 'Plinth to Paramount', file: 'pdfs/plinth-to-paramount.pdf' }
-  ],
-  reasoning: [
-    { name: 'Verbal & Non-Verbal Reasoning', file: 'pdfs/verbal-nonverbal.pdf' },
-    { name: 'Analytical Reasoning', file: 'pdfs/analytical-reasoning.pdf' }
-  ]
-};
-
-
+        math: [
+          { name: 'RS Aggarwal', file: 'pdfs/rs-aggarwal.pdf' },
+          { name: 'Reasoning book by Vikramjeet', file: 'pdfs/Reasoning book by Vikramjeet sir.pdf' }
+        ],
+        gk: [
+          { name: 'Lucent GK', file: 'pdfs/lucent-gk.pdf' },
+          { name: 'Arihant GK', file: 'pdfs/arihant-gk.pdf' }
+        ],
+        english: [
+          { name: 'Wren & Martin', file: 'pdfs/wren-martin.pdf' },
+          { name: 'Plinth to Paramount', file: 'pdfs/plinth-to-paramount.pdf' }
+        ],
+        reasoning: [
+          { name: 'Verbal & Non-Verbal Reasoning', file: 'pdfs/verbal-nonverbal.pdf' },
+          { name: 'Analytical Reasoning', file: 'pdfs/analytical-reasoning.pdf' }
+        ]
+      };
+      
     // Show PDF list when subject is clicked
     const pdfCategoryBtns = document.querySelectorAll('.pdf-category-btn');
     const pdfListDiv = document.getElementById('pdf-list');
@@ -416,7 +415,7 @@
     });
     // Exam PDFs Feature End
 
-    // PDF Modal logic
+    // PDF Modal logic (updated)
     const pdfModal = document.getElementById('pdf-modal');
     const pdfViewer = document.getElementById('pdf-viewer');
     const pdfModalTitle = document.getElementById('pdf-modal-title');
@@ -457,6 +456,10 @@
         totalPages = 1;
         pdfModalPages.textContent = '';
         pdfPageInput.value = 1;
+        // Stay on Exam PDFs section, do not go to home
+        views.forEach(v => v.classList.remove('active'));
+        const examView = document.getElementById('exam-pdfs');
+        if (examView) examView.classList.add('active');
     }
 
     // Close modal on close button or backdrop
@@ -523,7 +526,7 @@
             }
         });
     }
-    // Page input
+    // Page input (jump/find)
     if (pdfPageInput) {
         pdfPageInput.addEventListener('change', function() {
             let val = parseInt(pdfPageInput.value);
@@ -531,6 +534,15 @@
             if (val > totalPages) val = totalPages;
             currentPage = val;
             renderPage(currentPage);
+        });
+        pdfPageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                let val = parseInt(pdfPageInput.value);
+                if (isNaN(val) || val < 1) val = 1;
+                if (val > totalPages) val = totalPages;
+                currentPage = val;
+                renderPage(currentPage);
+            }
         });
     }
 })();
