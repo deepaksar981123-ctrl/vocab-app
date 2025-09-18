@@ -469,45 +469,38 @@
 
     // Load PDF using PDF.js
     function loadPdf(file) {
-        const url = file;
-        if (window.pdfjsLib) {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            pdfjsLib.getDocument(url).promise.then(function(pdf) {
-                pdfDoc = pdf;
-                totalPages = pdf.numPages;
-                currentPage = 1;
-                pdfModalPages.textContent = `Page 1 of ${totalPages}`;
-                pdfPageInput.value = 1;
-                pdfPageInput.max = totalPages;
-                renderPage(currentPage);
-            }).catch(function(error) {
-                pdfViewer.innerHTML = '<div style="padding:32px; color:#e53e3e;">Failed to load PDF.<br>' + error.message + '</div>';
-            });
-        } else {
-            pdfViewer.innerHTML = '<div style="padding:32px; color:#e53e3e;">PDF.js not loaded.</div>';
-        }
+    const url = file;
+    if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        pdfjsLib.getDocument(url).promise.then(function(pdf) {
+            pdfDoc = pdf;
+            renderAllPages(pdf);   // <-- single page render ki jagah sab pages render karna
+        }).catch(function(error) {
+            pdfViewer.innerHTML = '<div style="padding:32px; color:#e53e3e;">Failed to load PDF.<br>' + error.message + '</div>';
+        });
+    } else {
+        pdfViewer.innerHTML = '<div style="padding:32px; color:#e53e3e;">PDF.js not loaded.</div>';
     }
+}
 
-    function renderPage(num) {
-        pdfDoc.getPage(num).then(function(page) {
-            const viewport = page.getViewport({ scale: 1.2 });
+function renderAllPages(pdf) {
+    const viewer = pdfViewer;
+    viewer.innerHTML = '';  // previous content clear
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        pdf.getPage(pageNum).then(page => {
+            const scale = 1.2;
+            const viewport = page.getViewport({ scale: scale });
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            canvas.height = viewport.height;
             canvas.width = viewport.width;
-            pdfViewer.innerHTML = '';
-            pdfViewer.appendChild(canvas);
-            const renderContext = {
-                canvasContext: ctx,
-                viewport: viewport
-            };
-            page.render(renderContext);
-            pdfModalPages.textContent = `Page ${num} of ${totalPages}`;
-            pdfPageInput.value = num;
-            pdfPrevBtn.disabled = (num <= 1);
-            pdfNextBtn.disabled = (num >= totalPages);
+            canvas.height = viewport.height;
+            viewer.appendChild(canvas);
+            page.render({ canvasContext: ctx, viewport: viewport });
         });
     }
+}
+
 
     // Next/Prev buttons
     if (pdfPrevBtn) {
@@ -593,3 +586,4 @@ function formatExampleText(text) {
 
     return formattedText.trim();
 }
+
