@@ -771,6 +771,7 @@ h2 { font-size: 20px; margin: 12px 0; }
     z-index: 1;
 }
 
+/* Exam PDFs Feature - Modal & Controls Modernization Start */
 .pdf-modal-content {
     position: relative;
     background: var(--card);
@@ -783,6 +784,80 @@ h2 { font-size: 20px; margin: 12px 0; }
     flex-direction: column;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     animation: pdfModalSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.pdf-viewer {
+    flex: 1;
+    min-height: 500px;
+    max-height: 65vh;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: auto;
+    border-radius: 0 0 20px 20px;
+    margin-bottom: 0;
+}
+
+.pdf-modal-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 18px 0 18px 0;
+    background: var(--card);
+    border-radius: 0 0 20px 20px;
+    border-top: 1px solid var(--border);
+    margin-top: 0;
+}
+
+.pdf-modal-controls .pdf-page-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f1f5f9;
+    border-radius: 999px;
+    padding: 8px 18px;
+    border: 1.5px solid var(--border);
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text);
+    box-shadow: 0 2px 8px rgba(2,6,23,0.05);
+}
+
+#pdf-page-input {
+    width: 60px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    text-align: center;
+    font-weight: 600;
+    background: var(--card);
+    color: var(--text);
+    margin-left: 8px;
+}
+
+.pdf-modal-controls button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.pdf-modal-controls button:hover {
+    background: #0284c7;
+    transform: translateY(-1px);
+}
+
+.pdf-modal-controls button:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+    transform: none;
 }
 
 @keyframes pdfModalSlideIn {
@@ -841,78 +916,11 @@ h2 { font-size: 20px; margin: 12px 0; }
     transform: scale(1.1);
 }
 
-.pdf-viewer {
-    flex: 1;
-    min-height: 500px;
-    background: #f8f9fa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-}
-
-.pdf-viewer canvas {
-    max-width: 100%;
-    max-height: 100%;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-}
-
-.pdf-modal-controls {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 20px 24px;
-    border-top: 1px solid var(--border);
-    background: var(--card);
-    border-radius: 0 0 20px 20px;
-}
-
-.pdf-modal-controls button {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
-    background: var(--accent);
-    color: white;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.2s ease;
-}
-
-.pdf-modal-controls button:hover {
-    background: #0284c7;
-    transform: translateY(-1px);
-}
-
-.pdf-modal-controls button:disabled {
-    background: #cbd5e1;
-    cursor: not-allowed;
-    transform: none;
-}
-
-#pdf-page-input {
-    padding: 8px 12px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    text-align: center;
-    font-weight: 600;
-    background: var(--card);
-    color: var(--text);
-}
-
-#pdf-page-input:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
-}
-
 /* Responsive Design for PDF Modal */
 @media (max-width: 768px) {
     .pdf-modal-content {
-        width: 95%;
-        max-height: 95vh;
+        width: 98%;
+        max-height: 98vh;
     }
     
     .pdf-modal-header {
@@ -924,13 +932,19 @@ h2 { font-size: 20px; margin: 12px 0; }
     }
     
     .pdf-viewer {
-        min-height: 400px;
+        min-height: 300px;
+        max-height: 50vh;
     }
     
     .pdf-modal-controls {
-        padding: 16px 20px;
         flex-wrap: wrap;
-        gap: 12px;
+        gap: 8px;
+        padding: 12px 0;
+    }
+    
+    .pdf-modal-controls .pdf-page-box {
+        padding: 6px 10px;
+        font-size: 14px;
     }
     
     .pdf-categories {
