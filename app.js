@@ -448,6 +448,19 @@
     const pdfPageInput = document.getElementById('pdf-page-input');
     let pdfDoc = null;
     let totalPages = 1;
+    let observer = null;
+    let currentObservedPage = 1;
+    let pdfScale = 1.0; // 100%
+
+    function lockBodyScroll(lock) {
+        if (lock) {
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.documentElement.style.overflow = '';
+            document.body.style.overflow = '';
+        }
+    }
 
     // Open PDF in modal
     document.addEventListener('click', function(e) {
@@ -461,10 +474,13 @@
 
     function openPdfModal(file, title) {
         if (!pdfModal) return;
+        lockBodyScroll(true);
         pdfModal.classList.add('show');
         pdfModal.style.display = 'flex';
         pdfModalTitle.textContent = title || 'PDF Viewer';
         pdfViewer.innerHTML = '<div style="padding:32px; color:#888;">Loading PDF...</div>';
+        pdfViewer.scrollTop = 0; // ensure start
+        pdfScale = 1.0; // reset to 100%
         loadPdfContinuous(file);
     }
 
@@ -473,10 +489,13 @@
         pdfModal.classList.remove('show');
         pdfModal.style.display = 'none';
         pdfViewer.innerHTML = '';
+        if (observer) observer.disconnect();
+        observer = null;
         pdfDoc = null;
         totalPages = 1;
         pdfModalPages.textContent = '';
         pdfPageInput.value = 1;
+        lockBodyScroll(false);
         // Stay on Exam PDFs section, do not go to home
         views.forEach(v => v.classList.remove('active'));
         const examView = document.getElementById('exam-pdfs');
@@ -488,7 +507,6 @@
         btn.addEventListener('click', closePdfModal);
     });
 
-    // Load PDF using PDF.js (continuous scroll mode with controls)
     async function ensurePdfJs() {
         if (!window.pdfjsLib) {
             await new Promise((resolve, reject) => {
@@ -514,16 +532,24 @@
             await renderAllPages(pdf);
             currentObservedPage = 1;
             pdfPageInput.value = 1;
-            scrollToPage(1);
+            pdfViewer.scrollTop = 0; // do not auto-center; keep header visible
             startPageObserver();
         } catch (error) {
             pdfViewer.innerHTML = '<div style="padding:32px; color:#e53e3e;">Failed to load PDF.<br>' + error.message + '</div>';
         }
     }
 
+    function computeScaledViewport(page, baseWidth) {
+        const viewport = page.getViewport({ scale: 1 });
+        const desiredWidth = Math.max(320, (baseWidth || (pdfViewer.clientWidth || 600)) - 32);
+        const baseScale = Math.min(1.5, desiredWidth / viewport.width);
+        const scale = Math.min(2.0, Math.max(0.5, baseScale * pdfScale));
+        return page.getViewport({ scale });
+    }
+
     async function renderAllPages(pdf) {
         pdfViewer.innerHTML = '';
-        const viewerWidth = pdfViewer.clientWidth || 600;
+        const baseWidth = pdfViewer.clientWidth || 600;
         for (let i = 1; i <= pdf.numPages; i++) {
             const holder = document.createElement('div');
             holder.style.display = 'flex';
@@ -532,10 +558,7 @@
             holder.setAttribute('data-page', i);
 
             const page = await pdf.getPage(i);
-            const viewport = page.getViewport({ scale: 1 });
-            const desiredWidth = viewerWidth - 32;
-            const scale = Math.min(1.5, desiredWidth / viewport.width);
-            const scaledViewport = page.getViewport({ scale });
+            const scaledViewport = computeScaledViewport(page, baseWidth);
             const canvas = document.createElement('canvas');
             canvas.classList.add('pdf-page');
             canvas.setAttribute('data-page', i);
@@ -548,21 +571,34 @@
         }
     }
 
+    async function rerenderAtScale() {
+        if (!pdfDoc) return;
+        const baseWidth = pdfViewer.clientWidth || 600;
+        const nodes = Array.from(pdfViewer.querySelectorAll('[data-page]'));
+        for (const holder of nodes) {
+            const pageNum = parseInt(holder.getAttribute('data-page'));
+            const canvas = holder.querySelector('canvas');
+            const ctx = canvas.getContext('2d');
+            const page = await pdfDoc.getPage(pageNum);
+            const scaledViewport = computeScaledViewport(page, baseWidth);
+            canvas.height = scaledViewport.height;
+            canvas.width = scaledViewport.width;
+            await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+        }
+    }
+
     function scrollToPage(pageNum) {
         const el = pdfViewer.querySelector(`[data-page='${pageNum}']`);
         if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             pdfPageInput.value = pageNum;
         }
     }
 
-    // Observe which page is centered to update the page input automatically
-    let observer = null;
-    let currentObservedPage = 1;
+    // Observe which page is most visible to update the page input automatically
     function startPageObserver() {
         if (observer) { observer.disconnect(); }
         observer = new IntersectionObserver((entries) => {
-            // find most visible
             let best = { ratio: 0, page: currentObservedPage };
             entries.forEach(e => {
                 const page = parseInt(e.target.getAttribute('data-page'));
@@ -608,6 +644,25 @@
         pdfPageInput.addEventListener('change', jump);
         pdfPageInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') jump(); });
     }
+
+    // Zoom controls: Ctrl + / Ctrl - / Ctrl 0 (only when modal open)
+    document.addEventListener('keydown', async function(e) {
+        if (!pdfModal || pdfModal.getAttribute('aria-hidden') === 'true' || pdfModal.style.display === 'none') return;
+        if (!e.ctrlKey) return;
+        if (e.key === '+' || e.key === '=' ) {
+            e.preventDefault();
+            pdfScale = Math.min(2.0, pdfScale * 1.1);
+            await rerenderAtScale();
+        } else if (e.key === '-' || e.key === '_') {
+            e.preventDefault();
+            pdfScale = Math.max(0.5, pdfScale / 1.1);
+            await rerenderAtScale();
+        } else if (e.key === '0') {
+            e.preventDefault();
+            pdfScale = 1.0;
+            await rerenderAtScale();
+        }
+    });
 })();
 
 function initTheme() {
