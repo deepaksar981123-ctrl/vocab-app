@@ -490,16 +490,21 @@
 
     async function renderAllPages(pdf) {
         pdfViewer.innerHTML = '';
+        const viewerWidth = pdfViewer.clientWidth || 600; // fallback width
         for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
+            // Responsive scale calculation
+            const desiredWidth = viewerWidth - 32; // padding adjustment
+            const viewport = page.getViewport({ scale: 1 });
+            const scale = desiredWidth / viewport.width;
+            const scaledViewport = page.getViewport({ scale: scale > 1.5 ? 1.5 : scale }); // limit max scale
             const canvas = document.createElement('canvas');
             canvas.classList.add('pdf-page');
             canvas.setAttribute('data-page', i);
             const context = canvas.getContext('2d');
-            const viewport = page.getViewport({ scale: 1.2 });
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-            await page.render({ canvasContext: context, viewport }).promise;
+            canvas.height = scaledViewport.height;
+            canvas.width = scaledViewport.width;
+            await page.render({ canvasContext: context, viewport: scaledViewport }).promise;
             pdfViewer.appendChild(canvas);
         }
     }
