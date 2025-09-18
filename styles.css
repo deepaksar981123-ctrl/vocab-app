@@ -974,7 +974,7 @@ h2 { font-size: 20px; margin: 12px 0; }
 
 /* Exam PDFs Feature - Keep bottom controls visible Start */
 .pdf-modal-content {
-    max-height: 75vh; /* give a bit more room for controls */
+    max-height: 90vh; /* give a bit more room for controls */
     display: flex;
     flex-direction: column;
     overflow: hidden; /* contain internal scroll to viewer */
@@ -1000,6 +1000,7 @@ h2 { font-size: 20px; margin: 12px 0; }
     .pdf-modal-content { max-height: 92vh; }
 }
 /* Exam PDFs Feature - Keep bottom controls visible End */
+
 
 
 
