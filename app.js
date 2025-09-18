@@ -1,3 +1,4 @@
+
 (function() {
     const views = document.querySelectorAll('.view');
     const navButtons = document.querySelectorAll('.nav-btn');
@@ -415,7 +416,7 @@
     });
     // Exam PDFs Feature End
 
-    // PDF Modal logic (updated)
+    // PDF Modal logic (continuous scroll mode with controls)
     const pdfModal = document.getElementById('pdf-modal');
     const pdfViewer = document.getElementById('pdf-viewer');
     const pdfModalTitle = document.getElementById('pdf-modal-title');
@@ -424,7 +425,6 @@
     const pdfNextBtn = document.getElementById('pdf-next');
     const pdfPageInput = document.getElementById('pdf-page-input');
     let pdfDoc = null;
-    let currentPage = 1;
     let totalPages = 1;
 
     // Open PDF in modal
@@ -443,7 +443,7 @@
         pdfModal.style.display = 'flex';
         pdfModalTitle.textContent = title || 'PDF Viewer';
         pdfViewer.innerHTML = '<div style="padding:32px; color:#888;">Loading PDF...</div>';
-        loadPdf(file);
+        loadPdfContinuous(file);
     }
 
     function closePdfModal() {
@@ -452,7 +452,6 @@
         pdfModal.style.display = 'none';
         pdfViewer.innerHTML = '';
         pdfDoc = null;
-        currentPage = 1;
         totalPages = 1;
         pdfModalPages.textContent = '';
         pdfPageInput.value = 1;
@@ -467,74 +466,91 @@
         btn.addEventListener('click', closePdfModal);
     });
 
-    // Load PDF using PDF.js
-    function loadPdf(file) {
-    const url = file;
-    if (window.pdfjsLib) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        pdfjsLib.getDocument(url).promise.then(function(pdf) {
-            pdfDoc = pdf;
-            renderAllPages(pdf);   // <-- single page render ki jagah sab pages render karna
-        }).catch(function(error) {
-            pdfViewer.innerHTML = '<div style="padding:32px; color:#e53e3e;">Failed to load PDF.<br>' + error.message + '</div>';
-        });
-    } else {
-        pdfViewer.innerHTML = '<div style="padding:32px; color:#e53e3e;">PDF.js not loaded.</div>';
+    // Load PDF using PDF.js (continuous scroll mode with controls)
+    function loadPdfContinuous(file) {
+        const url = file;
+        if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            pdfjsLib.getDocument(url).promise.then(async function(pdf) {
+                pdfDoc = pdf;
+                totalPages = pdf.numPages;
+                pdfModalPages.textContent = `All Pages (${totalPages})`;
+                pdfPageInput.style.display = '';
+                pdfPrevBtn.style.display = '';
+                pdfNextBtn.style.display = '';
+                await renderAllPages(pdf);
+                scrollToPage(1); // Start at page 1
+            }).catch(function(error) {
+                pdfViewer.innerHTML = '<div style="padding:32px; color:#e53e3e;">Failed to load PDF.<br>' + error.message + '</div>';
+            });
+        } else {
+            pdfViewer.innerHTML = '<div style="padding:32px; color:#e53e3e;">PDF.js not loaded.</div>';
+        }
     }
-}
 
-function renderAllPages(pdf) {
-    const viewer = pdfViewer;
-    viewer.innerHTML = '';  // previous content clear
-
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-        pdf.getPage(pageNum).then(page => {
-            const scale = 1.2;
-            const viewport = page.getViewport({ scale: scale });
+    async function renderAllPages(pdf) {
+        pdfViewer.innerHTML = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
             const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = viewport.width;
+            canvas.classList.add('pdf-page');
+            canvas.setAttribute('data-page', i);
+            const context = canvas.getContext('2d');
+            const viewport = page.getViewport({ scale: 1.2 });
             canvas.height = viewport.height;
-            viewer.appendChild(canvas);
-            page.render({ canvasContext: ctx, viewport: viewport });
-        });
+            canvas.width = viewport.width;
+            await page.render({ canvasContext: context, viewport }).promise;
+            pdfViewer.appendChild(canvas);
+        }
     }
-}
 
+    // Scroll to a specific page's canvas and highlight it
+    function scrollToPage(pageNum) {
+        const canvas = pdfViewer.querySelector(`.pdf-page[data-page='${pageNum}']`);
+        if (canvas) {
+            canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Optional: highlight effect
+            canvas.style.boxShadow = '0 0 0 4px #0ea5e9';
+            setTimeout(() => { canvas.style.boxShadow = ''; }, 800);
+        }
+    }
 
-    // Next/Prev buttons
+    // Controls logic
     if (pdfPrevBtn) {
         pdfPrevBtn.addEventListener('click', function() {
-            if (currentPage > 1) {
-                currentPage--;
-                renderPage(currentPage);
+            let val = parseInt(pdfPageInput.value) || 1;
+            if (val > 1) {
+                val--;
+                pdfPageInput.value = val;
+                scrollToPage(val);
             }
         });
     }
     if (pdfNextBtn) {
         pdfNextBtn.addEventListener('click', function() {
-            if (currentPage < totalPages) {
-                currentPage++;
-                renderPage(currentPage);
+            let val = parseInt(pdfPageInput.value) || 1;
+            if (val < totalPages) {
+                val++;
+                pdfPageInput.value = val;
+                scrollToPage(val);
             }
         });
     }
-    // Page input (jump/find)
     if (pdfPageInput) {
         pdfPageInput.addEventListener('change', function() {
             let val = parseInt(pdfPageInput.value);
             if (isNaN(val) || val < 1) val = 1;
             if (val > totalPages) val = totalPages;
-            currentPage = val;
-            renderPage(currentPage);
+            pdfPageInput.value = val;
+            scrollToPage(val);
         });
         pdfPageInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 let val = parseInt(pdfPageInput.value);
                 if (isNaN(val) || val < 1) val = 1;
                 if (val > totalPages) val = totalPages;
-                currentPage = val;
-                renderPage(currentPage);
+                pdfPageInput.value = val;
+                scrollToPage(val);
             }
         });
     }
