@@ -997,8 +997,9 @@ h2 { font-size: 20px; margin: 12px 0; }
 }
 
 @media (max-width: 768px) {
-    .pdf-modal-content { max-height: 82vh; }
+    .pdf-modal-content { max-height: 92vh; }
 }
 /* Exam PDFs Feature - Keep bottom controls visible End */
+
 
 
