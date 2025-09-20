@@ -30,9 +30,14 @@
     <main class="container">
         <section id="home" class="view active">
             <h2>Word of the Day</h2>
-            <div id="wotd" class="card">
-                <div class="wotd-word" id="wotd-word">—</div>
+            <div id="wotd" class="card wotd-card">
+                <div class="wotd-header">
+                    <div class="wotd-word" id="wotd-word">—</div>
+                    <button id="wotd-listen" class="wotd-listen" aria-label="Listen">🔊 Listen</button>
+                </div>
                 <div class="wotd-meaning" id="wotd-meaning">—</div>
+                <div class="wotd-hindi" id="wotd-hindi">—</div>
+                <div class="wotd-synonyms" id="wotd-synonyms">—</div>
                 <div class="wotd-example" id="wotd-example">—</div>
             </div>
             <div class="home-buttons">
@@ -125,9 +130,10 @@
             <h2>Exam PDFs</h2>
             <div id="pdf-categories" class="pdf-categories">
                 <button class="pdf-category-btn" data-category="math">Math</button>
-                <button class="pdf-category-btn" data-category="gk/gs">GK/GS</button>
+                <button class="pdf-category-btn" data-category="gk">GK</button>
                 <button class="pdf-category-btn" data-category="english">English</button>
                 <button class="pdf-category-btn" data-category="reasoning">Reasoning</button>
+                <button class="pdf-category-btn" data-category="vocabulary">Vocabulary</button>
             </div>
             <div id="pdf-list" class="pdf-list"></div>
         </section>
