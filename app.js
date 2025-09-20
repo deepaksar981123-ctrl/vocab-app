@@ -37,7 +37,7 @@
         }
         saveQueue(remaining);
         if (remaining.length === 0) toast('All pending changes synced', 'success');
-        else toast(`${remaining.length} changes still pending sync`, 'error');
+        else toast(`${remaining.length} changes still pending sync`, 'warning');
         setupSearch(sheetWords || []);
     }
     window.addEventListener('online', flushQueue);
@@ -91,6 +91,35 @@
         }
     }
     scheduleDataRefresh();
+
+    // PDF Categories with back button
+    const pdfCategories = document.getElementById('pdf-categories');
+    const pdfList = document.getElementById('pdf-list');
+    let currentCategory = null;
+
+    function showCategoryView() {
+        if (pdfCategories) pdfCategories.style.display = 'flex';
+        if (pdfList) pdfList.style.display = 'none';
+        currentCategory = null;
+    }
+
+    function showPdfList(category) {
+        if (pdfCategories) pdfCategories.style.display = 'none';
+        if (pdfList) pdfList.style.display = 'block';
+        currentCategory = category;
+    }
+
+    // Add back button to PDF list
+    function addBackButton() {
+        const backBtn = document.createElement('button');
+        backBtn.className = 'pdf-category-btn';
+        backBtn.innerHTML = '← Back';
+        backBtn.style.marginBottom = '16px';
+        backBtn.addEventListener('click', showCategoryView);
+        if (pdfList) {
+            pdfList.insertBefore(backBtn, pdfList.firstChild);
+        }
+    }
 
     function setupSearch(words) {
         const input = document.getElementById('search-input');
@@ -291,11 +320,11 @@
                 toast(`"${wordToDelete}" deleted from Google Sheet`, 'success');
             } else {
                 enqueueOp(payload);
-                toast(`Delete queued (offline)`, 'error');
+                toast(`Delete queued (offline)`, 'warning');
             }
         } catch (error) {
             enqueueOp(payload);
-            toast(`Delete queued (network issue)`, 'error');
+            toast(`Delete queued (network issue)`, 'warning');
         }
         closeWordPopup();
     }
@@ -364,7 +393,7 @@
                     flushQueue();
                 } catch {
                     enqueueOp(payload);
-                    toast(isUpdate ? 'Update queued (offline)' : 'Save queued (offline)', 'error');
+                    toast(isUpdate ? 'Update queued (offline)' : 'Save queued (offline)', 'warning');
                 }
             })();
 
@@ -401,8 +430,9 @@
           { name: 'Reasoning book by Vikramjeet', file: 'pdfs/Reasoning book by Vikramjeet sir.pdf' }
         ],
         gk: [
-          { name: 'Lucent GK', file: 'pdfs/lucent-gk.pdf' },
-          { name: 'Arihant GK', file: 'pdfs/arihant-gk.pdf' }
+            { name: 'Lucent GK', file: 'pdfs/lucent-gk.pdf' },
+            { name: 'Arihant GK', file: 'pdfs/arihant-gk.pdf' },
+            { name: 'History by Khan Sir', file: 'https://drive.google.com/file/d/1NVXmcpXr1eXiuxbYOis7_T5SQLlp-qC5/view?usp=sharing' }
         ],
         english: [
           { name: 'Wren & Martin', file: 'pdfs/wren-martin.pdf' },
@@ -411,6 +441,9 @@
         reasoning: [
           { name: 'Verbal & Non-Verbal Reasoning', file: 'pdfs/verbal-nonverbal.pdf' },
           { name: 'Analytical Reasoning', file: 'pdfs/analytical-reasoning.pdf' }
+        ],
+        vocabulary: [
+          { name: 'Vocabulary by R.S. Aggarwal', file: 'https://drive.google.com/file/d/1hX8bejwFN-LZsSs5X2OWWNyu8miKSq-o/view?usp=sharing' }
         ]
       };
       
@@ -419,6 +452,9 @@
     const pdfListDiv = document.getElementById('pdf-list');
     pdfCategoryBtns.forEach(btn => {
         btn.addEventListener('click', function() {
+            // Skip back button clicks
+            if (btn.innerHTML.includes('← Back')) return;
+            
             // Remove active from all, add to clicked
             pdfCategoryBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
@@ -434,9 +470,29 @@
                     <div class="pdf-item-subject">${btn.textContent}</div>
                 </div>
             `).join('');
+            addBackButton();
+            showPdfList(cat);
         });
     });
     // Exam PDFs Feature End
+
+    // Helpers: detect and convert Google Drive file link to preview
+    function isDriveLink(url) {
+        return typeof url === 'string' && url.includes('drive.google.com/file/');
+    }
+    function toDrivePreview(url) {
+        if (!url) return url;
+        try {
+            const u = new URL(url);
+            const parts = u.pathname.split('/');
+            const dIdx = parts.indexOf('d');
+            if (dIdx !== -1 && parts[dIdx + 1]) {
+                const id = parts[dIdx + 1];
+                return `https://drive.google.com/file/d/${id}/preview`;
+            }
+        } catch {}
+        return url.replace('/view', '/preview');
+    }
 
     // PDF Modal logic (continuous scroll mode with controls)
     const pdfModal = document.getElementById('pdf-modal');
@@ -446,11 +502,54 @@
     const pdfPrevBtn = document.getElementById('pdf-prev');
     const pdfNextBtn = document.getElementById('pdf-next');
     const pdfPageInput = document.getElementById('pdf-page-input');
+    const pdfControlsBar = document.querySelector('.pdf-modal-controls');
     let pdfDoc = null;
     let totalPages = 1;
     let observer = null;
     let currentObservedPage = 1;
     let pdfScale = 1.0; // 100%
+    let usingDriveEmbed = false;
+
+    // Pan (drag to scroll) state
+    let isPanning = false;
+    let panStartX = 0, panStartY = 0, panScrollLeft = 0, panScrollTop = 0;
+
+    function enablePan() {
+        if (!pdfViewer) return;
+        pdfViewer.style.cursor = pdfScale > 1 ? 'grab' : '';
+    }
+
+    if (pdfViewer) {
+        pdfViewer.addEventListener('mousedown', (e) => {
+            if (pdfScale <= 1) return;
+            // ignore clicks on inputs/buttons
+            if (e.target.closest('input,button')) return;
+            isPanning = true;
+            pdfViewer.style.cursor = 'grabbing';
+            panStartX = e.clientX;
+            panStartY = e.clientY;
+            panScrollLeft = pdfViewer.scrollLeft;
+            panScrollTop = pdfViewer.scrollTop;
+            e.preventDefault();
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (!isPanning) return;
+            const dx = e.clientX - panStartX;
+            const dy = e.clientY - panStartY;
+            pdfViewer.scrollLeft = panScrollLeft - dx;
+            pdfViewer.scrollTop = panScrollTop - dy;
+        });
+        window.addEventListener('mouseup', () => {
+            if (!isPanning) return;
+            isPanning = false;
+            enablePan();
+        });
+        pdfViewer.addEventListener('mouseleave', () => {
+            if (!isPanning) return;
+            isPanning = false;
+            enablePan();
+        });
+    }
 
     function lockBodyScroll(lock) {
         if (lock) {
@@ -478,9 +577,30 @@
         pdfModal.classList.add('show');
         pdfModal.style.display = 'flex';
         pdfModalTitle.textContent = title || 'PDF Viewer';
-        pdfViewer.innerHTML = '<div style="padding:32px; color:#888;">Loading PDF...</div>';
+        pdfViewer.innerHTML = '<div style="padding:32px; color:#888;">Loading…</div>';
         pdfViewer.scrollTop = 0; // ensure start
         pdfScale = 1.0; // reset to 100%
+        enablePan();
+
+        // Drive embed path (Exam PDFs only)
+        if (isDriveLink(file)) {
+            usingDriveEmbed = true;
+            const previewUrl = toDrivePreview(file);
+            if (pdfControlsBar) pdfControlsBar.style.display = 'none';
+            const iframe = document.createElement('iframe');
+            iframe.src = previewUrl;
+            iframe.style.width = '100%';
+            iframe.style.height = '70vh';
+            iframe.style.border = '0';
+            iframe.setAttribute('allow', 'autoplay');
+            pdfViewer.innerHTML = '';
+            pdfViewer.appendChild(iframe);
+            return;
+        } else {
+            usingDriveEmbed = false;
+            if (pdfControlsBar) pdfControlsBar.style.display = '';
+        }
+
         loadPdfContinuous(file);
     }
 
@@ -493,6 +613,7 @@
         observer = null;
         pdfDoc = null;
         totalPages = 1;
+        usingDriveEmbed = false;
         pdfModalPages.textContent = '';
         pdfPageInput.value = 1;
         lockBodyScroll(false);
@@ -529,11 +650,12 @@
             pdfPageInput.style.display = '';
             pdfPrevBtn.style.display = '';
             pdfNextBtn.style.display = '';
-            await renderAllPages(pdf);
+            await buildLazyPlaceholders(pdf);
             currentObservedPage = 1;
             pdfPageInput.value = 1;
             pdfViewer.scrollTop = 0; // do not auto-center; keep header visible
             startPageObserver();
+            startLazyObserver();
         } catch (error) {
             pdfViewer.innerHTML = '<div style="padding:32px; color:#e53e3e;">Failed to load PDF.<br>' + error.message + '</div>';
         }
@@ -543,11 +665,28 @@
         const viewport = page.getViewport({ scale: 1 });
         const desiredWidth = Math.max(320, (baseWidth || (pdfViewer.clientWidth || 600)) - 32);
         const baseScale = Math.min(1.5, desiredWidth / viewport.width);
-        const scale = Math.min(2.0, Math.max(0.5, baseScale * pdfScale));
+        const scale = Math.min(3.0, Math.max(0.5, baseScale * pdfScale));
         return page.getViewport({ scale });
     }
 
-    async function renderAllPages(pdf) {
+    async function renderPageCanvas(pageNum, baseWidth) {
+        const holder = pdfViewer.querySelector(`[data-page='${pageNum}']`);
+        if (!holder || holder.getAttribute('data-rendered') === '1') return;
+        const page = await pdfDoc.getPage(pageNum);
+        const scaledViewport = computeScaledViewport(page, baseWidth);
+        const canvas = document.createElement('canvas');
+        canvas.classList.add('pdf-page');
+        canvas.setAttribute('data-page', pageNum);
+        const context = canvas.getContext('2d');
+        canvas.height = scaledViewport.height;
+        canvas.width = scaledViewport.width;
+        await page.render({ canvasContext: context, viewport: scaledViewport }).promise;
+        holder.innerHTML = '';
+        holder.appendChild(canvas);
+        holder.setAttribute('data-rendered', '1');
+    }
+
+    async function buildLazyPlaceholders(pdf) {
         pdfViewer.innerHTML = '';
         const baseWidth = pdfViewer.clientWidth || 600;
         for (let i = 1; i <= pdf.numPages; i++) {
@@ -555,27 +694,45 @@
             holder.style.display = 'flex';
             holder.style.justifyContent = 'center';
             holder.style.width = '100%';
+            holder.style.minHeight = '200px';
+            holder.style.background = 'transparent';
             holder.setAttribute('data-page', i);
-
-            const page = await pdf.getPage(i);
-            const scaledViewport = computeScaledViewport(page, baseWidth);
-            const canvas = document.createElement('canvas');
-            canvas.classList.add('pdf-page');
-            canvas.setAttribute('data-page', i);
-            const context = canvas.getContext('2d');
-            canvas.height = scaledViewport.height;
-            canvas.width = scaledViewport.width;
-            await page.render({ canvasContext: context, viewport: scaledViewport }).promise;
-            holder.appendChild(canvas);
+            // light placeholder
+            const ph = document.createElement('div');
+            ph.style.width = (baseWidth - 32) + 'px';
+            ph.style.height = '180px';
+            ph.style.borderRadius = '12px';
+            ph.style.background = 'linear-gradient(90deg,#f3f4f6,#e5e7eb,#f3f4f6)';
+            ph.style.backgroundSize = '200% 100%';
+            ph.style.animation = 'shimmer 1.2s infinite linear';
+            holder.appendChild(ph);
             pdfViewer.appendChild(holder);
         }
+    }
+
+    let lazyObserver = null;
+    function startLazyObserver() {
+        if (lazyObserver) lazyObserver.disconnect();
+        const baseWidth = pdfViewer.clientWidth || 600;
+        lazyObserver = new IntersectionObserver(async (entries) => {
+            for (const e of entries) {
+                if (e.isIntersecting) {
+                    const pageNum = parseInt(e.target.getAttribute('data-page'));
+                    await renderPageCanvas(pageNum, baseWidth);
+                }
+            }
+        }, { root: pdfViewer, rootMargin: '600px 0px 600px 0px', threshold: 0.01 });
+        pdfViewer.querySelectorAll('[data-page]').forEach(n => lazyObserver.observe(n));
     }
 
     async function rerenderAtScale() {
         if (!pdfDoc) return;
         const baseWidth = pdfViewer.clientWidth || 600;
-        const nodes = Array.from(pdfViewer.querySelectorAll('[data-page]'));
-        for (const holder of nodes) {
+        // Toggle horizontal scroll when zoomed in
+        pdfViewer.style.overflowX = pdfScale > 1 ? 'auto' : 'hidden';
+        enablePan();
+        const rendered = Array.from(pdfViewer.querySelectorAll('[data-rendered="1"]'));
+        for (const holder of rendered) {
             const pageNum = parseInt(holder.getAttribute('data-page'));
             const canvas = holder.querySelector('canvas');
             const ctx = canvas.getContext('2d');
@@ -595,7 +752,6 @@
         }
     }
 
-    // Observe which page is most visible to update the page input automatically
     function startPageObserver() {
         if (observer) { observer.disconnect(); }
         observer = new IntersectionObserver((entries) => {
@@ -645,17 +801,17 @@
         pdfPageInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') jump(); });
     }
 
-    // Zoom controls: Ctrl + / Ctrl - / Ctrl 0 (only when modal open)
+    // Zoom controls: Ctrl + / Ctrl - / Ctrl 0
     document.addEventListener('keydown', async function(e) {
         if (!pdfModal || pdfModal.getAttribute('aria-hidden') === 'true' || pdfModal.style.display === 'none') return;
         if (!e.ctrlKey) return;
         if (e.key === '+' || e.key === '=' ) {
             e.preventDefault();
-            pdfScale = Math.min(2.0, pdfScale * 1.1);
+            pdfScale = Math.min(3.0, +(pdfScale * 1.1).toFixed(3));
             await rerenderAtScale();
         } else if (e.key === '-' || e.key === '_') {
             e.preventDefault();
-            pdfScale = Math.max(0.5, pdfScale / 1.1);
+            pdfScale = Math.max(0.5, +(pdfScale / 1.1).toFixed(3));
             await rerenderAtScale();
         } else if (e.key === '0') {
             e.preventDefault();
@@ -663,6 +819,119 @@
             await rerenderAtScale();
         }
     });
+
+    // Populate Word of the Day with richer info
+    function setWordOfTheDay(wordObj) {
+        if (!wordObj) return;
+        const w = document.getElementById('wotd-word');
+        const m = document.getElementById('wotd-meaning');
+        const h = document.getElementById('wotd-hindi');
+        const s = document.getElementById('wotd-synonyms');
+        const e = document.getElementById('wotd-example');
+        if (w) w.textContent = wordObj.word || '—';
+        if (m) m.textContent = wordObj.meaning ? `Meaning: ${wordObj.meaning}` : 'Meaning: —';
+        if (h) h.textContent = wordObj.hindiMeaning ? `Hindi meaning: ${wordObj.hindiMeaning}` : '';
+        if (s) s.textContent = (Array.isArray(wordObj.synonyms) && wordObj.synonyms.length)
+            ? `Synonyms: ${wordObj.synonyms.join(', ')}`
+            : '';
+        if (e) e.textContent = wordObj.example ? `Example: ${wordObj.example.replace(/\n/g, ' ')}` : '';
+        // store current for listen
+        window.__WOTD_CURRENT = wordObj;
+    }
+
+    function pickWotd(words) {
+        const list = Array.isArray(words) ? words.filter(x => x && x.word) : [];
+        if (list.length === 0) return null;
+        const dayIndex = Math.floor(Date.now() / (1000*60*60*24));
+        const idx = dayIndex % list.length;
+        return list[idx];
+    }
+
+    // WOTD: persist a daily random pick and refresh at local midnight
+    function getTodayKey() {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`; // local date
+    }
+
+    function loadStoredWotd() {
+        try { return JSON.parse(localStorage.getItem('wotdPick') || 'null'); } catch { return null; }
+    }
+    function saveStoredWotd(obj) {
+        try { localStorage.setItem('wotdPick', JSON.stringify(obj)); } catch {}
+    }
+
+    function selectDailyWotd(words) {
+        const list = Array.isArray(words) ? words.filter(x => x && x.word) : [];
+        if (list.length === 0) return null;
+        const key = getTodayKey();
+        const stored = loadStoredWotd();
+        if (stored && stored.date === key && stored.word && stored.word.word) {
+            return stored.word;
+        }
+        // Pick a random word for today
+        const picked = list[Math.floor(Math.random() * list.length)];
+        saveStoredWotd({ date: key, word: picked });
+        return picked;
+    }
+
+    function refreshWotd(words) {
+        const w = selectDailyWotd(words);
+        setWordOfTheDay(w);
+    }
+
+    function msUntilNextMidnight() {
+        const now = new Date();
+        const next = new Date(now);
+        next.setHours(24, 0, 0, 0); // local midnight next day
+        return next - now;
+    }
+
+    function scheduleWotdMidnightRefresh(wordsProvider) {
+        const schedule = () => {
+            setTimeout(() => {
+                // New day: clear stored pick and set a new one, then schedule next 24h refresh
+                saveStoredWotd(null);
+                refreshWotd(wordsProvider());
+                // Subsequent refreshes every 24h
+                setInterval(() => {
+                    saveStoredWotd(null);
+                    refreshWotd(wordsProvider());
+                }, 24 * 60 * 60 * 1000);
+            }, msUntilNextMidnight());
+        };
+        schedule();
+    }
+
+    // Initial and subsequent updates (override prior logic)
+    function getCurrentWords() { return Array.isArray(sheetWords) ? sheetWords : []; }
+    refreshWotd(getCurrentWords());
+    const _origSetupSearch2 = setupSearch;
+    setupSearch = function(words) {
+        _origSetupSearch2(words);
+        refreshWotd(words);
+    };
+    // Schedule midnight change based on current words provider
+    scheduleWotdMidnightRefresh(getCurrentWords);
+
+    // Listen button: prefer pronunciation, fallback to word
+    const wotdListen = document.getElementById('wotd-listen');
+    if (wotdListen) {
+        wotdListen.addEventListener('click', () => {
+            const data = window.__WOTD_CURRENT || {};
+            const text = (data.pronunciation && data.pronunciation.trim()) || data.word || '';
+            if (!text) return;
+            try {
+                const utter = new SpeechSynthesisUtterance(text);
+                utter.lang = 'en-US';
+                utter.rate = 0.95;
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(utter);
+            } catch {}
+        });
+    }
 })();
 
 function initTheme() {
