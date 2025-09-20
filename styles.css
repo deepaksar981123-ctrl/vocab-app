@@ -129,22 +129,9 @@ h2 { font-size: 20px; margin: 12px 0; }
     overflow: hidden;
 }
 
-#wotd::before {
-    content: 'Click to see details';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(14, 165, 233, 0.9);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
+/* Disable old WOTD hover overlay */
+#wotd::before { content: none !important; opacity: 0 !important; display: none !important; }
+#wotd:hover::before { content: none !important; opacity: 0 !important; display: none !important; }
 
 #wotd:hover::before {
     opacity: 1;
@@ -693,7 +680,7 @@ h2 { font-size: 20px; margin: 12px 0; }
 
 .pdf-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* पहले 280px था */
     gap: 16px;
     margin-top: 20px;
 }
@@ -796,7 +783,7 @@ h2 { font-size: 20px; margin: 12px 0; }
     gap: 24px;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 16px;
+    padding: 0px;
     border-radius: 0 0 20px 20px;
 }
 
@@ -1019,5 +1006,50 @@ h2 { font-size: 20px; margin: 12px 0; }
     padding: 4px 6px;
 }
 /* Exam PDFs Feature - Controls compact icon style End */
+
+/* Word of the Day enhanced styles Start */
+.wotd-card {
+    border-radius: 16px;
+    padding: 20px;
+}
+.wotd-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.wotd-word {
+    font-size: 32px;
+    font-weight: 800;
+}
+.wotd-listen {
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 700;
+}
+.wotd-listen:hover { background: #eef2f7; }
+.wotd-meaning { margin-top: 8px; color: var(--muted); font-size: 16px; }
+.wotd-hindi { margin-top: 6px; font-weight: 600; }
+.wotd-synonyms { margin-top: 6px; color: #64748b; font-size: 14px; }
+.wotd-example { margin-top: 8px; color: #475569; font-style: italic; }
+
+@media (max-width: 640px) {
+    .wotd-card { border-radius: 20px; padding: 18px; }
+    .wotd-word { font-size: 28px; }
+    .wotd-listen { padding: 8px 12px; }
+}
+/* Word of the Day enhanced styles End */
+
+@keyframes shimmer {
+    0% { background-position: 0% 0; }
+    100% { background-position: 200% 0; }
+}
+
+/* Allow panning cursor when zoomed */
+.pdf-viewer { cursor: default; }
 
 
